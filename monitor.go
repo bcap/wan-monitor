@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,37 @@ const bandwidthTestURL = fileURL50MiB
 const fileURL10MiB = "https://bcap-public-389518.s3.amazonaws.com/zero-file-10MiB"
 const fileURL50MiB = "https://bcap-public-389518.s3.amazonaws.com/zero-file-50MiB"
 const fileURL100MiB = "https://bcap-public-389518.s3.amazonaws.com/zero-file-100MiB"
+
+type MonitorArgs struct {
+}
+
+func monitor(ctx context.Context) {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		monitorLatency(ctx)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		monitorBandwidth(ctx)
+	}()
+
+	done := make(chan struct{})
+
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+}
 
 func monitorLatency(ctx context.Context) {
 	tickerLoop(ctx, latencyTestPeriod, func() {
