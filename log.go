@@ -20,12 +20,17 @@ type logRecord struct {
 func logResult(start time.Time, testType string, duration time.Duration, result string, err error, extra map[string]any) {
 	end := time.Now()
 	format := "2006-01-02 15:04:05.000"
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
+	}
 	record := logRecord{
 		Start:      start.UTC().Format(format) + " UTC",
 		End:        end.UTC().Format(format) + " UTC",
 		DurationMs: duration.Milliseconds(),
 		TestType:   testType,
 		Result:     result,
+		Err:        errStr,
 		Extra:      extra,
 	}
 	jsonData, _ := json.Marshal(record)
