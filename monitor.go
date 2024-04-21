@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -14,15 +15,22 @@ const bandwidthTestPeriod = 5 * time.Minute
 const latencyDialTimeout = 3 * time.Second
 const bandwidthDialTimeout = 3 * time.Second
 
+const latencyTestURL = "http://google.com"
+const bandwidthTestURL = fileURL50MiB
+
+const fileURL10MiB = "https://bcap-public-389518.s3.amazonaws.com/zero-file-10MiB"
+const fileURL50MiB = "https://bcap-public-389518.s3.amazonaws.com/zero-file-50MiB"
+const fileURL100MiB = "https://bcap-public-389518.s3.amazonaws.com/zero-file-100MiB"
+
 func monitorLatency(ctx context.Context) {
 	tickerLoop(ctx, latencyTestPeriod, func() {
 		start := time.Now()
-		_, _, err := fetch("GET", "http://google.com", latencyDialTimeout)
+		_, _, err := fetch("GET", latencyTestURL, latencyDialTimeout)
 		latency := time.Since(start)
 		if err != nil {
-			logResult(start, "reachGoogle", latency, "failed", map[string]any{"error": err.Error()})
+			logResult(start, "reachGoogle", latency, "failed", err, nil)
 		} else {
-			logResult(start, "reachGoogle", latency, "ok", nil)
+			logResult(start, "reachGoogle", latency, "ok", nil, nil)
 		}
 	})
 }
@@ -30,18 +38,16 @@ func monitorLatency(ctx context.Context) {
 func monitorBandwidth(ctx context.Context) {
 	tickerLoop(ctx, bandwidthTestPeriod, func() {
 		start := time.Now()
-		_, body, err := fetch("GET", "https://bcap-public-389518.s3.amazonaws.com/zero-file", bandwidthDialTimeout)
+		res, body, err := fetch("GET", bandwidthTestURL, bandwidthDialTimeout)
 		latency := time.Since(start)
 		if err != nil {
-			logResult(start, "download10MiBFile", latency, "failed", map[string]any{"error": err.Error()})
+			logResult(start, "downloadFile", latency, "failed", err, nil)
+		} else if res.StatusCode != http.StatusOK {
+			logResult(start, "downloadFile", latency, "failed", fmt.Errorf("got status code %d", res.StatusCode), nil)
 		} else {
 			speedKiBs := int64(float64(len(body)) / 1024.0 / latency.Seconds())
 			bodyLenKiB := float64(len(body)) / 1024.0
-			result := "ok"
-			if len(body) != 10*1024*1024 {
-				result = "failed"
-			}
-			logResult(start, "download10MiBFile", latency, result, map[string]any{"bodyLengthKiB": bodyLenKiB, "speedKiBs": speedKiBs})
+			logResult(start, "downloadFile", latency, "ok", nil, map[string]any{"bodyLengthKiB": bodyLenKiB, "speedKiBs": speedKiBs})
 		}
 	})
 }

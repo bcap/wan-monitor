@@ -12,11 +12,12 @@ type logRecord struct {
 	DurationMs int64          `json:"durationMs"`
 	TestType   string         `json:"testType"`
 	Result     string         `json:"result"`
+	Err        string         `json:"error,omitempty"`
 	Message    string         `json:"message,omitempty"`
 	Extra      map[string]any `json:"extra,omitempty"`
 }
 
-func logResult(start time.Time, testType string, duration time.Duration, result string, extra map[string]any) {
+func logResult(start time.Time, testType string, duration time.Duration, result string, err error, extra map[string]any) {
 	end := time.Now()
 	format := "2006-01-02 15:04:05.000"
 	record := logRecord{
